@@ -34,16 +34,11 @@ export default async function handler({
 
             if (!existingOrder) {
               const transformedProduct = await transformShopifyProductToProductData(shopifyProduct, manager);
-              console.log("---------------------------------")
-              console.log(transformedProduct)
-              console.log("---------------------------------")
               try {
-                console.log(`<<<<<<<<< Creating product ${shopifyProduct.title}  >>>>>>>>>>`)
                 // typeOrm mutation to feed data into database
                 const newProduct = await productService.create(transformedProduct);
-                console.log("XXXXXXXXXXX", newProduct)
+
                 if(newProduct){
-                  console.log(`<<<<<<<<< Product ${shopifyProduct.title} created  >>>>>>>>>>`)
                   return newProduct
                 } else {
                   console.log(`********* Failed to save Order with ${shopifyProduct.id} **********`)

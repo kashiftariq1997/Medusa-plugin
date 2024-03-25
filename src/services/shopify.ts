@@ -8,8 +8,8 @@ export default class ShopifyService {
 
   constructor() {
     this.shopify = shopifyApi({
-      apiKey: process.env.SHOPIFY_API_KEY || "3d4cecfae97d81b024ccf7e98dc2f7f0",
-      apiSecretKey: process.env.SHOPIFY_API_SECRET || "b577fcc47f8e0c0d194d692b8bad8a94",
+      apiKey: process.env.SHOPIFY_API_KEY,
+      apiSecretKey: process.env.SHOPIFY_API_SECRET,
       apiVersion: LATEST_API_VERSION,
       isPrivateApp: true,
       scopes: ['read_products', 'read_orders'],
@@ -17,14 +17,14 @@ export default class ShopifyService {
       hostName: '127.0.0.1:7001'
     });
 
-    const sessionId = this.shopify.session.getOfflineId('383c42-2.myshopify.com')
+    const sessionId = this.shopify.session.getOfflineId(`${process.env}.myshopify.com`)
 
     const session = new Session({
       id: sessionId,
-      shop: '383c42-2.myshopify.com',
+      shop: `${process.env}.myshopify.com`,
       state: 'state',
       isOnline: false,
-      accessToken: process.env.SHOPIFY_ACCESS_TOKEN || "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",
+      accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
     })
 
     this.client = new this.shopify.clients.Rest({ session: session })
@@ -51,12 +51,10 @@ export default class ShopifyService {
 
   async getShopifyOrders(): Promise<GetAllOrders>{
     try {
-      console.log("Fetching orders ......")
-      console.log(" Client             -         ", this.client)
       const { body } = await this.client.get({
         path: 'orders'
       })
-      console.log(body)
+
       if(body){
         const { orders } = body
 
