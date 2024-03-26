@@ -1,7 +1,7 @@
 import { Order, Product, Region, Currency, OrderStatus, FulfillmentStatus, PaymentStatus, LineItem, Address, Discount, DiscountRuleType, ProductType, MedusaContainer, ProductTypeService, ProductStatus, ProductOption, ProductVariant, ProductTag, Customer } from "@medusajs/medusa";
 import { EntityManager } from "typeorm";
 import { ShopifyProduct } from "../types";
-import { CreateProductInput } from "@medusajs/medusa/dist/types/product";
+import { CreateProductInput, UpdateProductInput } from "@medusajs/medusa/dist/types/product";
 
 export async function transformShopifyOrderToOrderData(shopifyOrder: any, manager: EntityManager): Promise<Partial<Order>> {
   const RegionRepository = manager.getRepository(Region)
@@ -34,7 +34,7 @@ export async function transformShopifyOrderToOrderData(shopifyOrder: any, manage
   };
 }
 
-export async function transformShopifyProductToProductData(shopifyProduct: ShopifyProduct, manager: EntityManager): Promise<CreateProductInput> {
+export async function transformShopifyProductToUpdateProduct(shopifyProduct: ShopifyProduct, manager: EntityManager): Promise<UpdateProductInput> {
     const ProductTypeRepository = manager.getRepository(ProductType)
 
     const {
@@ -51,7 +51,7 @@ export async function transformShopifyProductToProductData(shopifyProduct: Shopi
         description: body_html,
         handle,
         is_giftcard: false,
-        status: ProductStatus[status],
+        status: mapProductStatus(status),
         images: [],
         thumbnail: '',
         // options: [],
@@ -71,11 +71,71 @@ export async function transformShopifyProductToProductData(shopifyProduct: Shopi
         // tags: [],
         discountable: true,
         external_id: id.toString(),
-        metadata: {},
+        // metadata: {},
         sales_channels: [],
     };
   }
 
+
+
+export async function transformShopifyProductToProductData(shopifyProduct: ShopifyProduct, manager: EntityManager): Promise<CreateProductInput> {
+    const ProductTypeRepository = manager.getRepository(ProductType)
+
+    const {
+        body_html, created_at, handle, id, image, images, options, product_type, published_at, published_scope,
+        status, tags, template_suffix, title, updated_at, variants, vendor
+    } = shopifyProduct
+
+    // let productType: ProductType | null = null;
+
+    // productType = await ProductTypeRepository.findBy({ value: product_type })
+    return {
+        title: title || '',
+        subtitle: '',
+        description: body_html,
+        handle,
+
+        is_giftcard: false,
+        status: mapProductStatus(status),
+        images: [],
+        thumbnail: '',
+        // options: [],
+        // variants: variants as unknown as ProductVariant[],
+        // categories: [],
+        // profile_id: '',
+        weight: 10,
+        length: 10,
+        height: 10,
+        width: 10,
+        hs_code: '',
+        origin_country: '',
+        mid_code: '',
+        material: '',
+        // collection_id: '',
+        type: null,
+        // tags: [],
+        discountable: true,
+        external_id: id.toString(),
+        // metadata: {},
+        sales_channels: [],
+    };
+  }
+
+  export function mapProductStatus(status: string): ProductStatus {
+    switch (status) {
+        case 'draft':
+            return ProductStatus.DRAFT;
+        case 'proposed':
+            return ProductStatus.PROPOSED;
+        case 'published':
+        case 'active':
+            return ProductStatus.PUBLISHED;
+        case 'rejected':
+            return ProductStatus.REJECTED;
+        default:
+            return ProductStatus.DRAFT; // Default case, adjust as needed
+    }
+  }
 export function mapOrderStatus(shopifyStatus: string): OrderStatus {
   switch (shopifyStatus) {
       case 'pending':

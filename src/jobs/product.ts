@@ -25,14 +25,14 @@ export default async function handler({
 
     const shopifyService: ShopifyService = container.resolve("shopifyService")
     const { products, status } = await shopifyService.getShopifyProducts();
-    console.log(status, "Products ", products.length )
+
     if (status === 200) {
       await Promise.all(
         products.map(async (shopifyProduct: ShopifyProduct): Promise<Partial<Product>> => {
           if(shopifyProduct){
-            const existingOrder = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });
+            const existingProduct = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });
 
-            if (!existingOrder) {
+            if (!existingProduct) {
               const transformedProduct = await transformShopifyProductToProductData(shopifyProduct, manager);
               try {
                 // typeOrm mutation to feed data into database
@@ -50,7 +50,7 @@ export default async function handler({
               console.log(`*************** Product with External ID ${shopifyProduct.id} already exist ***************`)
             }
 
-            return existingOrder;
+            return existingProduct;
           }
 
           return null;
@@ -65,6 +65,7 @@ export default async function handler({
 
 export const config: ScheduledJobConfig = {
   name: "sync-product-with-shopify-store",
-  schedule:  "*/1 * * * *",
+  // schedule:  "*/1 * * * *",
+  schedule: "0 * * * *",
   data: {},
 }
