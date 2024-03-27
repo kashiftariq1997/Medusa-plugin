@@ -66,6 +66,6 @@ export default async function handler({
 
 export const config: ScheduledJobConfig = {
   name: "sync-orders-with-shopify-store",
-  schedule:  "* * * * *",
+  schedule: "0 * * * *",
   data: {},
 }

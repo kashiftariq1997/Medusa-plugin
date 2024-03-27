@@ -1,6 +1,7 @@
 import '@shopify/shopify-api/adapters/node';
 import { shopifyApi, LATEST_API_VERSION, Session } from '@shopify/shopify-api';
-import { GetAllOrders } from '../types';
+import { GetAllOrders, Option, ShopifyProduct } from '../types';
+import { Product } from '@medusajs/medusa';
 
 export default class ShopifyService {
   private shopify: any;
@@ -66,6 +67,28 @@ export default class ShopifyService {
       console.log("<<<<<<<<<<<<<< Error in getShopifyOrders >>>>>>>>>>>>")
       console.log(error)
       return { orders: [], status: 500}
+    }
+  }
+
+  async addProduct(medusaProduct: Product): Promise<void>{
+    const {
+      id, external_id, collection_id, handle, created_at, options, origin_country, status,
+      title, type, description,
+    } = medusaProduct || {}
+    const shopifyProduct: Partial<ShopifyProduct> = {
+        body_html: description, options: options as unknown as Option[], handle, status,
+        title
+    }
+
+    try {
+      const { body, status} = await this.client.post({
+        path: 'products',
+        data: JSON.stringify(shopifyProduct)
+      })
+
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error)
     }
   }
 }
