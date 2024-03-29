@@ -18,11 +18,11 @@ export default class ShopifyService {
       hostName: '127.0.0.1:7001'
     });
 
-    const sessionId = this.shopify.session.getOfflineId(`${process.env}.myshopify.com`)
+    const sessionId = this.shopify.session.getOfflineId(process.env.SHOPIFY_DOMAIN)
 
     const session = new Session({
       id: sessionId,
-      shop: `${process.env}.myshopify.com`,
+      shop: process.env.SHOPIFY_DOMAIN,
       state: 'state',
       isOnline: false,
       accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
@@ -70,7 +70,8 @@ export default class ShopifyService {
     }
   }
 
-  async addProduct(medusaProduct: Product): Promise<void>{
+  async createProduct(medusaProduct: Product): Promise<{ status: number}>{
+    console.log(":::::::::::::::::::::::::::::::::::::")
     const {
       id, external_id, collection_id, handle, created_at, options, origin_country, status,
       title, type, description,
@@ -81,11 +82,14 @@ export default class ShopifyService {
     }
 
     try {
-      const { body, status} = await this.client.post({
+      const { body, status } = await this.client.post({
         path: 'products',
         data: JSON.stringify(shopifyProduct)
       })
 
+      console.log(body)
+
+      return { status }
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
       console.log(error)

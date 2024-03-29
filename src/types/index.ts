@@ -1,6 +1,6 @@
 type ApiStatus = { status: number }
 
-interface ShopifyOrder {
+export interface ShopifyOrder {
   id: number;
   admin_graphql_api_id: string;
   app_id?: any;
@@ -79,14 +79,14 @@ interface ShopifyOrder {
   total_weight: number;
   updated_at: string;
   user_id?: any;
-  billing_address: Billingaddress;
-  customer: Customer;
+  billing_address: ShippingAddress;
+  customer: ShopifyCustomer;
   discount_applications: Discountapplication[];
   fulfillments: Fulfillment[];
-  line_items: Lineitem2[];
+  line_items: LineItem[];
   payment_terms?: any;
   refunds: Refund[];
-  shipping_address: Billingaddress;
+  shipping_address: ShippingAddress;
   shipping_lines: Shippingline[];
 }
 
@@ -134,7 +134,7 @@ interface Refundlineitem {
   subtotal_set: Currentsubtotalpriceset;
   total_tax: number;
   total_tax_set: Currentsubtotalpriceset;
-  line_item: Lineitem2;
+  line_item: LineItem;
 }
 interface Transaction {
   id: number;
@@ -159,8 +159,8 @@ interface Transaction {
   test: boolean;
   user_id?: any;
 }
-interface Lineitem2 {
-  id: number;
+interface LineItem {
+  id: string;
   admin_graphql_api_id: string;
   current_quantity: number;
   fulfillable_quantity: number;
@@ -207,37 +207,7 @@ interface Fulfillment {
   tracking_url: string;
   tracking_urls: string[];
   updated_at: string;
-  line_items: Lineitem[];
-}
-interface Lineitem {
-  id: number;
-  admin_graphql_api_id: string;
-  current_quantity: number;
-  fulfillable_quantity: number;
-  fulfillment_service: string;
-  fulfillment_status?: any;
-  gift_card: boolean;
-  grams: number;
-  name: string;
-  price: string;
-  price_set: Currentsubtotalpriceset;
-  product_exists: boolean;
-  product_id: number;
-  properties: Noteattribute[];
-  quantity: number;
-  requires_shipping: boolean;
-  sku: string;
-  taxable: boolean;
-  title: string;
-  total_discount: string;
-  total_discount_set: Currentsubtotalpriceset;
-  variant_id: number;
-  variant_inventory_management: string;
-  variant_title: string;
-  vendor?: any;
-  tax_lines: Taxline[];
-  duties: any[];
-  discount_allocations: Discountallocation[];
+  line_items: LineItem[];
 }
 interface Discountallocation {
   amount: string;
@@ -259,7 +229,8 @@ interface Discountapplication {
   target_selection: string;
   code: string;
 }
-interface Customer {
+
+export interface ShopifyCustomer {
   id: number;
   email: string;
   created_at: string;
@@ -310,23 +281,7 @@ interface Emailmarketingconsent {
   opt_in_level?: any;
   consent_updated_at: string;
 }
-interface Billingaddress {
-  first_name: string;
-  address1: string;
-  phone: string;
-  city: string;
-  zip: string;
-  province: string;
-  country: string;
-  last_name: string;
-  address2: string;
-  company?: any;
-  latitude: number;
-  longitude: number;
-  name: string;
-  country_code: string;
-  province_code: string;
-}
+
 interface Taxline {
   price: string;
   rate: number;
@@ -360,8 +315,8 @@ interface Clientdetails {
   user_agent?: any;
 }
 
-export type GetAllOrders = ApiStatus & { orders: ShopifyOrder[]}
- // ----------------------------------------------------------------------
+export type GetAllOrders = ApiStatus & { orders: ShopifyOrder[] }
+// ----------------------------------------------------------------------
 
 export interface ShopifyProduct {
   id: number
@@ -444,4 +399,24 @@ export interface Image {
   height: number
   src: string
   variant_ids: number[]
+}
+
+// -------------
+
+interface ShippingAddress {
+  first_name: string
+  address1: string
+  phone: any
+  city: string
+  zip: string
+  province: string
+  country: string
+  last_name: string
+  address2: any
+  company: any
+  latitude: number
+  longitude: number
+  name: string
+  country_code: string
+  province_code: string
 }

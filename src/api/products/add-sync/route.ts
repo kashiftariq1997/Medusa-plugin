@@ -7,8 +7,6 @@ export async function POST(
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> {
-  const data = req.body;
-
   try {
     const manager: EntityManager = req.scope.resolve("manager")
     const ProductRepository = manager.getRepository(Product)
