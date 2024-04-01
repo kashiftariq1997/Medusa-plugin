@@ -82,7 +82,7 @@ export interface ShopifyOrder {
   billing_address: ShippingAddress;
   customer: ShopifyCustomer;
   discount_applications: Discountapplication[];
-  fulfillments: Fulfillment[];
+  fulfillments: ShopifyFulfillment[];
   line_items: LineItem[];
   payment_terms?: any;
   refunds: Refund[];
@@ -189,7 +189,8 @@ interface LineItem {
   duties: any[];
   discount_allocations: Discountallocation[];
 }
-interface Fulfillment {
+
+export interface ShopifyFulfillment {
   id: number;
   admin_graphql_api_id: string;
   created_at: string;

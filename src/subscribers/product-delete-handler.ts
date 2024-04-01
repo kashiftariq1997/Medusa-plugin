@@ -3,19 +3,20 @@ import {
   type SubscriberConfig,
   type SubscriberArgs,
 } from "@medusajs/medusa"
+import ShopifyService from "../services/shopify"
 
 export default async function productDeleteHandler({
   data, eventName, container, pluginOptions,
 }: SubscriberArgs<Record<string, any>>) {
-  const productService: ProductService = container.resolve(
-    "productService"
-  )
+  const productService: ProductService = container.resolve("productService")
+  const shopifyService: ShopifyService = container.resolve("shopifyService")
 
-  const { id } = data
+  const { external_id } = data
 
-  const product = await productService.retrieve(id)
+  if(external_id){
 
-  // do something with the product...
+  }
+
 }
 
 export const config: SubscriberConfig = {

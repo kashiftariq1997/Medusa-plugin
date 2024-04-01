@@ -1,6 +1,6 @@
-import { Order, Region, Currency, OrderStatus, FulfillmentStatus, PaymentStatus, LineItem, Address, Discount, DiscountRuleType, ProductType, ProductStatus, Customer,  } from "@medusajs/medusa";
+import { Order, Region, Currency, OrderStatus, FulfillmentStatus, PaymentStatus, LineItem, Address, Discount, DiscountRuleType, ProductType, ProductStatus, Customer, Fulfillment, TrackingLink, } from "@medusajs/medusa";
 import { EntityManager } from "typeorm";
-import { ShopifyCustomer, ShopifyOrder, ShopifyProduct } from "../types";
+import { ShopifyCustomer, ShopifyFulfillment, ShopifyOrder, ShopifyProduct } from "../types";
 import { CreateProductInput, UpdateProductInput } from "@medusajs/medusa/dist/types/product";
 import { CreateCustomerInput } from "@medusajs/medusa/dist/types/customers";
 import { UpdateOrderInput } from "@medusajs/medusa/dist/types/orders";
@@ -33,7 +33,7 @@ export async function transformShopifyOrderToOrderData(shopifyOrder: ShopifyOrde
     // billing_address: mapAddress(shopifyOrder.billing_address),
     // shipping_address: mapAddress(shopifyOrder.shipping_address),
     // customer: mapCustomer(shopifyOrder.customer),
-    ...( customer ? { customer_id: customer.id } : null )
+    ...(customer ? { customer_id: customer.id } : null)
     // Add other mappings here as necessary
   };
 }
@@ -41,9 +41,6 @@ export async function transformShopifyOrderToOrderData(shopifyOrder: ShopifyOrde
 export async function transformShopifyOrderToUpdateOrder(shopifyOrder: ShopifyOrder, manager: EntityManager): Promise<UpdateOrderInput> {
   const customer = await createOrFindCustomer(shopifyOrder.customer, manager);
 
-  console.log("order_status_url", shopifyOrder.order_status_url)
-  console.log("financial_status", shopifyOrder.financial_status)
-  console.log("fulfillment_status", shopifyOrder.fulfillment_status)
   return {
     // status: mapOrderStatus(shopifyOrder.financial_status) as any,
     // fulfillment_status: mapFulfillmentStatus(shopifyOrder.fulfillment_status) as any,
@@ -51,7 +48,7 @@ export async function transformShopifyOrderToUpdateOrder(shopifyOrder: ShopifyOr
     discounts: shopifyOrder.discount_applications?.map(mapDiscounts) ?? [],
     email: shopifyOrder.email ?? "test@test.com",
     // items: [],
-    ...( customer ? { customer_id: customer.id } : null )
+    ...(customer ? { customer_id: customer.id } : null)
     // billing_address: mapAddress(shopifyOrder.billing_address),
     // shipping_address: mapAddress(shopifyOrder.shipping_address),
   };
@@ -265,18 +262,18 @@ export function mapDiscounts(shopifyDiscountApplication: any): Discount {
 }
 
 
-export async function createOrFindCustomer(shopifyCustomer: ShopifyCustomer, manager: EntityManager): Promise<Customer>{
+export async function createOrFindCustomer(shopifyCustomer: ShopifyCustomer, manager: EntityManager): Promise<Customer> {
   const CustomerRepository = manager.getRepository(Customer)
 
-  if(!shopifyCustomer){
+  if (!shopifyCustomer) {
     const customers = await CustomerRepository.find()
 
     return customers[0]
   }
 
-  const customer = await CustomerRepository.findOne({ where: { email: shopifyCustomer.email }})
+  const customer = await CustomerRepository.findOne({ where: { email: shopifyCustomer.email } })
 
-  if( customer ) return customer
+  if (customer) return customer
   const customerInput: CreateCustomerInput = {
     email: shopifyCustomer.email,
     first_name: shopifyCustomer.first_name ?? '',
@@ -287,4 +284,21 @@ export async function createOrFindCustomer(shopifyCustomer: ShopifyCustomer, man
   const savedCustomer = await CustomerRepository.save(newCustomer)
 
   return savedCustomer ?? null;
+}
+
+export async function getOrderFulfillmentData(
+  orderId: string,
+  shopifyFulfillment: ShopifyFulfillment,
+  manager: EntityManager
+): Promise<Fulfillment> {
+  const FulfillmentRepository = manager.getRepository(Fulfillment)
+  const { tracking_numbers, tracking_urls } = shopifyFulfillment || {}
+
+  const fulfillment = FulfillmentRepository.create({
+    data: {}, metadata: {}, tracking_numbers, order_id: orderId
+  })
+
+  const save = await FulfillmentRepository.save(fulfillment);
+
+  return save ? save : null;
 }

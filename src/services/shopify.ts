@@ -1,19 +1,20 @@
 import '@shopify/shopify-api/adapters/node';
 import { shopifyApi, LATEST_API_VERSION, Session } from '@shopify/shopify-api';
 import { GetAllOrders, Option, ShopifyProduct } from '../types';
-import { Product } from '@medusajs/medusa';
+import { Product, TransactionBaseService} from '@medusajs/medusa';
 
-export default class ShopifyService {
+export default class ShopifyService extends TransactionBaseService {
   private shopify: any;
   private client: any;
 
-  constructor() {
+  constructor(container: any) {
+    super(container);
     this.shopify = shopifyApi({
       apiKey: process.env.SHOPIFY_API_KEY,
       apiSecretKey: process.env.SHOPIFY_API_SECRET,
       apiVersion: LATEST_API_VERSION,
       isPrivateApp: true,
-      scopes: ['read_products', 'read_orders'],
+      scopes: ['read_products', 'read_orders', 'write_products', 'write_orders'],
       isEmbeddedApp: false,
       hostName: '127.0.0.1:7001'
     });
@@ -30,7 +31,6 @@ export default class ShopifyService {
 
     this.client = new this.shopify.clients.Rest({ session: session })
   }
-
 
   async getShopifyProducts(){
     try {
@@ -70,8 +70,7 @@ export default class ShopifyService {
     }
   }
 
-  async createProduct(medusaProduct: Product): Promise<{ status: number}>{
-    console.log(":::::::::::::::::::::::::::::::::::::")
+  async createProduct(medusaProduct: Product){
     const {
       id, external_id, collection_id, handle, created_at, options, origin_country, status,
       title, type, description,
@@ -87,7 +86,18 @@ export default class ShopifyService {
         data: JSON.stringify(shopifyProduct)
       })
 
-      console.log(body)
+      return { status }
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error)
+    }
+  }
+
+  async removeProductFromShopify(id: string){
+    try {
+      const { body, status } = await this.client.delete({
+        path: 'products', id
+      })
 
       return { status }
     } catch (error) {
