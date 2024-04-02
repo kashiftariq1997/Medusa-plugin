@@ -70,7 +70,7 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
-  async createProduct(medusaProduct: Product){
+  async shpCreateProduct(medusaProduct: Product){
     const {
       id, external_id, collection_id, handle, created_at, options, origin_country, status,
       title, type, description,

@@ -9,7 +9,7 @@ export default async function productAddHandler({
   data, eventName, container, pluginOptions,
 }: SubscriberArgs<Record<string, any>>) {
   const productService: ProductService = container.resolve("productService");
-  const shopifyService = container.resolve<ShopifyService>("shopifyService")
+  const shopifyService: ShopifyService = container.resolve("shopifyService")
 
   const { id } = data
 
@@ -17,7 +17,7 @@ export default async function productAddHandler({
     const product = await productService.retrieve(id)
 
     if(product){
-      const { status } = await shopifyService.createProduct(product)
+      const { status } = await shopifyService.shpCreateProduct(product)
 
       if(status === 200 || status === 201){
         console.log("Product synced with shopify store")
