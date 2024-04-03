@@ -12,9 +12,14 @@ export default async function productDeleteHandler({
   const shopifyService: ShopifyService = container.resolve("shopifyService")
 
   const { external_id } = data
-
-  if(external_id){
-
+  try {
+    if(external_id){
+      await shopifyService.deleteProduct(external_id)
+      console.log("Products are synced with store")
+    }
+  } catch (error) {
+    console.log("********** Error in productDeleteHandler ********")
+    console.log(error)
   }
 
 }

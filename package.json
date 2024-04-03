@@ -41,7 +41,9 @@
     "express": "^4.17.2",
     "medusa-interfaces": "^1.3.8",
     "prism-react-renderer": "^2.0.4",
-    "typeorm": "^0.3.20"
+    "shopify-api-node": "^3.13.1",
+    "typeorm": "^0.3.20",
+    "types": "^0.1.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.14.3",

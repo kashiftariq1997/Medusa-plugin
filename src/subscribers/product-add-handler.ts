@@ -17,9 +17,11 @@ export default async function productAddHandler({
     const product = await productService.retrieve(id)
 
     if(product){
-      const { status } = await shopifyService.shpCreateProduct(product)
+      const shopifyProduct = await shopifyService.createProduct(product)
 
-      if(status === 200 || status === 201){
+      if(shopifyProduct){
+        // const { id: external_Id } = shopifyProduct
+        // await productService.update(id, { external_id: external_Id.toString()})
         console.log("Product synced with shopify store")
       }
     }
