@@ -1,84 +1,55 @@
-// import '@shopify/shopify-api/adapters/node';
-// import { shopifyApi, LATEST_API_VERSION, Session } from '@shopify/shopify-api';
-import { GetAllOrders, Option, ShopifyProduct } from '../types';
-import { Product, TransactionBaseService} from '@medusajs/medusa';
+import { Product, TransactionBaseService } from '@medusajs/medusa';
 import Shopify from 'shopify-api-node'
+import { Option, ShopifyProduct } from '../types';
+
 export default class ShopifyService extends TransactionBaseService {
   private shopify: Shopify;
-  // private client: any;
 
   constructor(container: any) {
     super(container);
-    // this.shopify = shopifyApi({
-    //   apiKey: process.env.SHOPIFY_API_KEY,
-    //   apiSecretKey: process.env.SHOPIFY_API_SECRET,
-    //   apiVersion: LATEST_API_VERSION,
-    //   isPrivateApp: true,
-    //   scopes: ['read_products', 'read_orders', 'write_products', 'write_orders'],
-    //   isEmbeddedApp: false,
-    //   hostName: '127.0.0.1:7001'
-    // });
 
     this.shopify = new Shopify({
       shopName: '383c42-2',
       apiKey: process.env.SHOPIFY_API_KEY,
       password: process.env.SHOPIFY_PASSWORD
     })
-    // const sessionId = this.shopify.session.getOfflineId(process.env.SHOPIFY_DOMAIN)
-
-    // const session = new Session({
-    //   id: sessionId,
-    //   shop: process.env.SHOPIFY_DOMAIN,
-    //   state: 'state',
-    //   isOnline: false,
-    //   accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
-    // })
-
-    // this.client = new this.shopify.clients.Request({ session: session })
   }
 
-  async getShopifyProducts(){
+  async getShopifyProducts() {
     try {
-      // const { body } = await this.client.get({
-      //   path: 'products'
-      // })
-
-      // if(body){
-        // const { products } = body
-
-        // return { products, status: 200};
-      // } else{
-        return {products: [], status: 404}
-      // }
+      const response = await this.shopify.product.list();
+      return { products: response, status: 200 }
     } catch (error) {
-      return {products: [], status: 500}
+      console.log("<<<<<<<<<<<<<< Error in getShopifyProducts >>>>>>>>>>>>")
+      console.log(error)
+      return { products: [], status: 500 }
     }
   }
 
-  async getShopifyOrders(){
-  //   try {
-  //     const { body } = await this.client.get({
-  //       path: 'orders'
-  //     })
-
-  //     if(body){
-  //       const { orders } = body
-
-  //       return { orders, status: 200};
-  //     } else{
-        return {orders: [], status: 404}
-  //     }
-  //   } catch (error) {
-  //     console.log("<<<<<<<<<<<<<< Error in getShopifyOrders >>>>>>>>>>>>")
-  //     console.log(error)
-  //     return { orders: [], status: 500}
-  //   }
+  async getShopifyProduct(id: number): Promise<Shopify.IProduct> {
+    try {
+      return await this.shopify.product.get(id)
+    } catch (error) {
+      console.log("Failed to get Shopify product")
+      return null;
+    }
   }
 
-  async createProduct(medusaProduct: Product): Promise<Shopify.IProduct>{
+  async getShopifyOrders() {
+    try {
+      const response = await this.shopify.order.list();
+      return { orders: response, status: 200 }
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in getShopifyOrders >>>>>>>>>>>>")
+      console.log(error)
+      return { orders: [], status: 500 }
+    }
+  }
+
+  async createProduct(medusaProduct: Product): Promise<Shopify.IProduct> {
     const {
       id, collection_id, handle, created_at, options, origin_country, status,
-      title, type, description, 
+      title, type, description,
     } = medusaProduct || {}
 
     const shopifyProduct = {
@@ -92,15 +63,14 @@ export default class ShopifyService extends TransactionBaseService {
     }
 
     try {
-      const productResponse = await this.shopify.product.create(shopifyProduct)
-      return productResponse;
+      return await this.shopify.product.create(shopifyProduct)
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
       console.log(error.response.body.errors)
     }
   }
 
-  async updateProduct(medusaProduct: Product){
+  async updateProduct(medusaProduct: Product) {
     const {
       id, external_id, collection_id, handle, created_at, options, origin_country, status,
       title, type, description,
@@ -123,9 +93,10 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
-  async deleteProduct(id: string){
+  async deleteProduct(id: number) {
     try {
-       return await this.shopify.product.delete(parseInt(id))
+      await this.shopify.product.delete(id);
+      console.log("*** Deleted Product synced with store ****")
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in deleteProduct >>>>>>>>>>>>")
       console.log(error.response.body.errors)

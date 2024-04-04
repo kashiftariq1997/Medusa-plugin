@@ -11,7 +11,9 @@ export default async function productUpdateHandler({
   const productService: ProductService = container.resolve("productService");
   const shopifyService: ShopifyService = container.resolve("shopifyService")
 
-  const { id } = data
+  const { id, fields } = data || {}
+  
+  if(fields && fields.includes('external_id')) return;
 
   try {
     const product = await productService.retrieve(id)
@@ -22,15 +24,13 @@ export default async function productUpdateHandler({
       if(shopifyProduct){
         const { id: external_Id } = shopifyProduct
         await productService.update(id, { external_id: external_Id.toString() })
-        console.log("Product synced with shopify store")
+        console.log("*** Product synced with shopify store ***")
       }
     }
   } catch (error) {
     console.log("********** Error in productUpdateHandler ********")
     console.log(error)
   }
-
-  
 }
 
 export const config: SubscriberConfig = {
