@@ -1,6 +1,7 @@
-import { Product, TransactionBaseService } from '@medusajs/medusa';
+import { Fulfillment, Order, Product, TransactionBaseService, LineItem } from '@medusajs/medusa';
 import Shopify from 'shopify-api-node'
 import { Option, ShopifyProduct } from '../types';
+import { parseLineItems } from '../utils';
 
 export default class ShopifyService extends TransactionBaseService {
   private shopify: Shopify;
@@ -99,6 +100,73 @@ export default class ShopifyService extends TransactionBaseService {
       console.log("*** Deleted Product synced with store ****")
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in deleteProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async deleteOrder(id: number) {
+    try {
+      await this.shopify.order.delete(id);
+      console.log("*** Deleted Order synced with store ****")
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in deleteOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async placeOrder(medusaOrder: Order, lineItems: LineItem[]): Promise<Shopify.IOrder>{
+    const { tax_total, currency } = medusaOrder || {}
+    const shopifyOrder = {
+      total_tax: tax_total ?? 10,
+      line_items: parseLineItems(lineItems, medusaOrder.external_id as unknown as number),
+      currency: !!currency ? currency.code : "USD"
+     }
+
+    try {
+      const response = await this.shopify.order.create(shopifyOrder);
+
+      console.log("Place order response", response)
+      return response;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in placeOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async updateOrder(medusaOrder: Order) {
+    const { tax_total, currency, items, external_id } = medusaOrder || {}
+    const shopifyOrder = {
+      total_tax: tax_total ?? 10,
+      line_items: items || [],
+      currency: !!currency ? currency.code : "USD"
+     }
+
+    try {
+      const orderResponse = await this.shopify.order.update(parseInt(external_id), shopifyOrder)
+      return orderResponse;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async addFulfilment(external_order_id: number) {
+    try {
+      const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled'})
+      const orderResponse = await this.shopify.fulfillment.create(external_order_id, {})
+      return orderResponse;
+      return null
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async cancelOrder(order: Order){
+    try {
+      await this.shopify.order.cancel(order.external_id as unknown as number)
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in cancelOrder >>>>>>>>>>>>")
       console.log(error.response.body.errors)
     }
   }

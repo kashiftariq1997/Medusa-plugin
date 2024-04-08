@@ -4,6 +4,7 @@ import { ShopifyCustomer, ShopifyFulfillment, ShopifyOrder, ShopifyProduct } fro
 import { CreateProductInput, UpdateProductInput } from "@medusajs/medusa/dist/types/product";
 import { CreateCustomerInput } from "@medusajs/medusa/dist/types/customers";
 import { UpdateOrderInput } from "@medusajs/medusa/dist/types/orders";
+import Shopify from "shopify-api-node";
 
 export async function transformShopifyOrderToOrderData(shopifyOrder: ShopifyOrder, manager: EntityManager): Promise<Partial<Order>> {
   const RegionRepository = manager.getRepository(Region)
@@ -96,7 +97,7 @@ export async function transformShopifyProductToUpdateProduct(shopifyProduct: Sho
   };
 }
 
-export async function transformShopifyProductToProductData(shopifyProduct: ShopifyProduct, manager: EntityManager): Promise<CreateProductInput> {
+export async function transformShopifyProductToProductData(shopifyProduct: Shopify.IProduct, manager: EntityManager): Promise<CreateProductInput> {
   const ProductTypeRepository = manager.getRepository(ProductType)
 
   const {
@@ -301,4 +302,27 @@ export async function getOrderFulfillmentData(
   const save = await FulfillmentRepository.save(fulfillment);
 
   return save ? save : null;
+}
+
+export function parseLineItems(items: LineItem[], order_external_id: number){
+  return items.map(item => {
+    const { 
+      fulfilled_quantity, description, has_shipping, includes_tax, unit_price,
+      is_return, is_giftcard, quantity, title
+    } = item || {}
+
+    return {
+      fulfilled_quantity,
+      order_id: order_external_id,
+      description,
+      has_shipping,
+      includes_tax,
+      unit_price,
+      is_return,
+      is_giftcard,
+      quantity,
+      title,
+      price: unit_price / 100
+    }
+  })
 }

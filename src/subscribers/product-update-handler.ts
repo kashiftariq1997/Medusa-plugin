@@ -22,8 +22,6 @@ export default async function productUpdateHandler({
       const shopifyProduct = await shopifyService.updateProduct(product)
 
       if(shopifyProduct){
-        const { id: external_Id } = shopifyProduct
-        await productService.update(id, { external_id: external_Id.toString() })
         console.log("*** Product synced with shopify store ***")
       }
     }
