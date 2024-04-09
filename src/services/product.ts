@@ -15,7 +15,7 @@ class ProductService extends MedusaProductService {
     const product = await this.retrieve(id);
 
     if (product) {
-      await this.shopifyService.deleteProduct(product.external_id);
+      await this.shopifyService.deleteProduct(product.external_id as unknown as number);
       await super.delete(id);
     }
   }

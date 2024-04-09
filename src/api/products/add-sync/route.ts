@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse, Product, ProductService } from "@medusaj
 import { EntityManager } from "typeorm";
 import { ShopifyProduct } from "../../../types";
 import { transformShopifyProductToProductData } from "../../../utils";
+import Shopify from "shopify-api-node";
 
 export async function POST(
   req: MedusaRequest,
@@ -11,7 +12,7 @@ export async function POST(
     const manager: EntityManager = req.scope.resolve("manager")
     const ProductRepository = manager.getRepository(Product)
     const productService = req.scope.resolve<ProductService>("productService");
-    const shopifyProduct: ShopifyProduct = req.body
+    const shopifyProduct: Shopify.IProduct = req.body
 
     if(shopifyProduct.id){
       const existingProduct = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });

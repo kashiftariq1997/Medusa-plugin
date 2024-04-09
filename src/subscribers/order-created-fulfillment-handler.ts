@@ -15,19 +15,19 @@ export default async function orderCreatedFulfillmentHandler({
   const fulfillmentService: FulfillmentService = container.resolve("fulfillmentService")
   const shopifyService: ShopifyService = container.resolve("shopifyService")
   const { id } = data
-
+  console.log("FULFILLMENT", data)
   try {
     const order = await orderService.retrieve(id)
     
-    if(order){
-      const shopifyOrder = await shopifyService.addFulfilment(order.external_id as unknown as number)
+    // if(order){
+    //   const shopifyOrder = await shopifyService.addFulfilment(order.external_id as unknown as number)
 
-      if(shopifyOrder){
-        const { id: external_Id } = shopifyOrder
-        await orderService.update(id, { external_id: external_Id.toString()} as UpdateOrderInput)
-        console.log("*** Order fulfillment synced with shopify store ***")
-      }
-    }
+    //   if(shopifyOrder){
+    //     const { id: external_Id } = shopifyOrder
+    //     await orderService.update(id, { external_id: external_Id.toString()} as UpdateOrderInput)
+    //     console.log("*** Order fulfillment synced with shopify store ***")
+    //   }
+    // }
 
   } catch (error) {
     console.log("********** Error in orderCreatedFulfillmentHandler ********")

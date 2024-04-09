@@ -12,6 +12,7 @@ import {
   mapOrderStatus, mapPaymentStatus, transformShopifyOrderToOrderData, transformShopifyProductToProductData
 } from "../utils"
 import { ShopifyProduct } from "../types"
+import Shopify from "shopify-api-node"
 
 export default async function handler({
   container,
@@ -28,7 +29,7 @@ export default async function handler({
 
     if (status === 200) {
       await Promise.all(
-        products.map(async (shopifyProduct: ShopifyProduct): Promise<Partial<Product>> => {
+        products.map(async (shopifyProduct: Shopify.IProduct): Promise<Partial<Product>> => {
           if(shopifyProduct){
             const existingProduct = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });
 

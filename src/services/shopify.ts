@@ -1,4 +1,4 @@
-import { Fulfillment, Order, Product, TransactionBaseService, LineItem } from '@medusajs/medusa';
+import { Fulfillment, Order, Product, TransactionBaseService, LineItem, TrackingLink } from '@medusajs/medusa';
 import Shopify from 'shopify-api-node'
 import { Option, ShopifyProduct } from '../types';
 import { parseLineItems } from '../utils';
@@ -114,13 +114,13 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
-  async placeOrder(medusaOrder: Order, lineItems: LineItem[]): Promise<Shopify.IOrder>{
+  async placeOrder(medusaOrder: Order, lineItems: LineItem[]): Promise<Shopify.IOrder> {
     const { tax_total, currency } = medusaOrder || {}
     const shopifyOrder = {
       total_tax: tax_total ?? 10,
       line_items: parseLineItems(lineItems, medusaOrder.external_id as unknown as number),
       currency: !!currency ? currency.code : "USD"
-     }
+    }
 
     try {
       const response = await this.shopify.order.create(shopifyOrder);
@@ -133,16 +133,17 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
-  async updateOrder(medusaOrder: Order) {
+  async updateOrder(medusaOrder: Order, lineItems: LineItem[]) {
     const { tax_total, currency, items, external_id } = medusaOrder || {}
     const shopifyOrder = {
       total_tax: tax_total ?? 10,
-      line_items: items || [],
+      line_items: parseLineItems(lineItems, medusaOrder.external_id as unknown as number),
       currency: !!currency ? currency.code : "USD"
-     }
+    }
 
     try {
       const orderResponse = await this.shopify.order.update(parseInt(external_id), shopifyOrder)
+      console.log("R E S P O S E ", orderResponse)
       return orderResponse;
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
@@ -150,19 +151,53 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
-  async addFulfilment(external_order_id: number) {
+  async addFulfilmentAndTracking(external_order_id: number, tracking: TrackingLink) {
     try {
-      const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled'})
-      const orderResponse = await this.shopify.fulfillment.create(external_order_id, {})
-      return orderResponse;
-      return null
+      const trackingPayload = {
+        line_items_by_fulfillment_order: [{ fulfillment_order_id: external_order_id }],
+        tracking_info: {
+          number: tracking.tracking_number,
+          url: tracking.url || '',
+          tracking_number: tracking.tracking_number
+        }
+      }
+
+      const payload = {
+        fulfillment: {
+          message: "",
+          notify_customer: false,
+          tracking_info: {
+            number: tracking.tracking_number,
+            url: `"https://www.fedex.com/fedextrack/?trknbr=${tracking.tracking_number}`,
+            company: "FedEx",
+          },
+          line_items_by_fulfillment_order: [
+            {
+              fulfillment_order_id: external_order_id,
+              fulfillment_order_line_items: [],
+            }
+          ],
+        }
+      }
+      console.log("1111111111", payload)
+      console.log(JSON.stringify(payload))
+
+      const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled' })
+      console.log("***************8")
+      console.log("***************8")
+      console.log("***************8")
+      console.log("***************8")
+      const fulfillemnt = await this.shopify.fulfillment.create(external_order_id, JSON.stringify(payload))
+      console.log(":::::::::::::::::::", fulfillemnt)
+      return fulfillemnt;
+
     } catch (error) {
-      console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
+      console.log("<<<<<<<<<<<<<< Error in addFulfilmentAndTracking >>>>>>>>>>>>")
       console.log(error.response.body.errors)
     }
   }
 
-  async cancelOrder(order: Order){
+  async cancelOrder(order: Order) {
     try {
       await this.shopify.order.cancel(order.external_id as unknown as number)
     } catch (error) {
