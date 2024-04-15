@@ -1,94 +1,208 @@
-import '@shopify/shopify-api/adapters/node';
-import { shopifyApi, LATEST_API_VERSION, Session } from '@shopify/shopify-api';
-import { GetAllOrders, Option, ShopifyProduct } from '../types';
-import { Product } from '@medusajs/medusa';
+import { Fulfillment, Order, Product, TransactionBaseService, LineItem, TrackingLink } from '@medusajs/medusa';
+import Shopify from 'shopify-api-node'
+import { Option, ShopifyProduct } from '../types';
+import { parseLineItems } from '../utils';
 
-export default class ShopifyService {
-  private shopify: any;
-  private client: any;
+export default class ShopifyService extends TransactionBaseService {
+  private shopify: Shopify;
 
-  constructor() {
-    this.shopify = shopifyApi({
+  constructor(container: any) {
+    super(container);
+
+    this.shopify = new Shopify({
+      shopName: '383c42-2',
       apiKey: process.env.SHOPIFY_API_KEY,
-      apiSecretKey: process.env.SHOPIFY_API_SECRET,
-      apiVersion: LATEST_API_VERSION,
-      isPrivateApp: true,
-      scopes: ['read_products', 'read_orders'],
-      isEmbeddedApp: false,
-      hostName: '127.0.0.1:7001'
-    });
-
-    const sessionId = this.shopify.session.getOfflineId(`${process.env}.myshopify.com`)
-
-    const session = new Session({
-      id: sessionId,
-      shop: `${process.env}.myshopify.com`,
-      state: 'state',
-      isOnline: false,
-      accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
+      password: process.env.SHOPIFY_PASSWORD
     })
-
-    this.client = new this.shopify.clients.Rest({ session: session })
   }
 
-
-  async getShopifyProducts(){
+  async getShopifyProducts() {
     try {
-      const { body } = await this.client.get({
-        path: 'products'
-      })
-
-      if(body){
-        const { products } = body
-
-        return { products, status: 200};
-      } else{
-        return {products: [], status: 404}
-      }
+      const response = await this.shopify.product.list();
+      return { products: response, status: 200 }
     } catch (error) {
-      return {products: [], status: 500}
+      console.log("<<<<<<<<<<<<<< Error in getShopifyProducts >>>>>>>>>>>>")
+      console.log(error)
+      return { products: [], status: 500 }
     }
   }
 
-  async getShopifyOrders(): Promise<GetAllOrders>{
+  async getShopifyProduct(id: number): Promise<Shopify.IProduct> {
     try {
-      const { body } = await this.client.get({
-        path: 'orders'
-      })
+      return await this.shopify.product.get(id)
+    } catch (error) {
+      console.log("Failed to get Shopify product")
+      return null;
+    }
+  }
 
-      if(body){
-        const { orders } = body
-
-        return { orders, status: 200};
-      } else{
-        return {orders: [], status: 404}
-      }
+  async getShopifyOrders() {
+    try {
+      const response = await this.shopify.order.list();
+      return { orders: response, status: 200 }
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in getShopifyOrders >>>>>>>>>>>>")
       console.log(error)
-      return { orders: [], status: 500}
+      return { orders: [], status: 500 }
     }
   }
 
-  async addProduct(medusaProduct: Product): Promise<void>{
+  async createProduct(medusaProduct: Product): Promise<Shopify.IProduct> {
+    const {
+      id, collection_id, handle, created_at, options, origin_country, status,
+      title, type, description,
+    } = medusaProduct || {}
+
+    const shopifyProduct = {
+      title,
+      body_html: description,
+      handle,
+      external_id: id,
+      status: status === 'published' ? 'active' : 'draft',
+      options: options as unknown as Option[],
+      vendor: "Burton"
+    }
+
+    try {
+      return await this.shopify.product.create(shopifyProduct)
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async updateProduct(medusaProduct: Product) {
     const {
       id, external_id, collection_id, handle, created_at, options, origin_country, status,
       title, type, description,
     } = medusaProduct || {}
     const shopifyProduct: Partial<ShopifyProduct> = {
-        body_html: description, options: options as unknown as Option[], handle, status,
-        title
+      title,
+      body_html: description,
+      handle,
+      status: status === 'published' ? 'active' : 'draft',
+      options: options as unknown as Option[],
+      vendor: "Burton"
     }
 
     try {
-      const { body, status} = await this.client.post({
-        path: 'products',
-        data: JSON.stringify(shopifyProduct)
-      })
+      const productResponse = await this.shopify.product.update(parseInt(external_id), shopifyProduct)
+      return productResponse;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in updateProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async deleteProduct(id: number) {
+    try {
+      await this.shopify.product.delete(id);
+      console.log("*** Deleted Product synced with store ****")
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in deleteProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async deleteOrder(id: number) {
+    try {
+      await this.shopify.order.delete(id);
+      console.log("*** Deleted Order synced with store ****")
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in deleteOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async placeOrder(medusaOrder: Order, lineItems: LineItem[]): Promise<Shopify.IOrder> {
+    const { tax_total, currency } = medusaOrder || {}
+    const shopifyOrder = {
+      total_tax: tax_total ?? 10,
+      line_items: parseLineItems(lineItems, medusaOrder.external_id as unknown as number),
+      currency: !!currency ? currency.code : "USD"
+    }
+
+    try {
+      const response = await this.shopify.order.create(shopifyOrder);
+
+      console.log("Place order response", response)
+      return response;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in placeOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async updateOrder(medusaOrder: Order, lineItems: LineItem[]) {
+    const { tax_total, currency, items, external_id } = medusaOrder || {}
+    const shopifyOrder = {
+      total_tax: tax_total ?? 10,
+      line_items: parseLineItems(lineItems, medusaOrder.external_id as unknown as number),
+      currency: !!currency ? currency.code : "USD"
+    }
+
+    try {
+      const orderResponse = await this.shopify.order.update(parseInt(external_id), shopifyOrder)
+      console.log("R E S P O S E ", orderResponse)
+      return orderResponse;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async addFulfilmentAndTracking(external_order_id: number, tracking: TrackingLink) {
+    try {
+      const trackingPayload = {
+        line_items_by_fulfillment_order: [{ fulfillment_order_id: external_order_id }],
+        tracking_info: {
+          number: tracking.tracking_number,
+          url: tracking.url || '',
+          tracking_number: tracking.tracking_number
+        }
+      }
+
+      const payload = {
+        fulfillment: {
+          message: "",
+          notify_customer: false,
+          tracking_info: {
+            number: tracking.tracking_number,
+            url: `"https://www.fedex.com/fedextrack/?trknbr=${tracking.tracking_number}`,
+            company: "FedEx",
+          },
+          line_items_by_fulfillment_order: [
+            {
+              fulfillment_order_id: external_order_id,
+              fulfillment_order_line_items: [],
+            }
+          ],
+        }
+      }
+      console.log("1111111111", payload)
+      console.log(JSON.stringify(payload))
+
+      const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled' })
+      console.log("***************8")
+      console.log("***************8")
+      console.log("***************8")
+      console.log("***************8")
+      const fulfillemnt = await this.shopify.fulfillment.create(external_order_id, JSON.stringify(payload))
+      console.log(":::::::::::::::::::", fulfillemnt)
+      return fulfillemnt;
 
     } catch (error) {
-      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
-      console.log(error)
+      console.log("<<<<<<<<<<<<<< Error in addFulfilmentAndTracking >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async cancelOrder(order: Order) {
+    try {
+      await this.shopify.order.cancel(order.external_id as unknown as number)
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in cancelOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
     }
   }
 }
