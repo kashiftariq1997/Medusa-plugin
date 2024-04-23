@@ -10,7 +10,7 @@ export default class ShopifyService extends TransactionBaseService {
     super(container);
 
     this.shopify = new Shopify({
-      shopName: '383c42-2',
+      shopName: process.env.SHOPIFY_SHOP_NAME,
       apiKey: process.env.SHOPIFY_API_KEY,
       password: process.env.SHOPIFY_PASSWORD
     })
@@ -49,8 +49,7 @@ export default class ShopifyService extends TransactionBaseService {
 
   async createProduct(medusaProduct: Product): Promise<Shopify.IProduct> {
     const {
-      id, collection_id, handle, created_at, options, origin_country, status,
-      title, type, description,
+      id, handle, options, status, title, description, images, thumbnail
     } = medusaProduct || {}
 
     const shopifyProduct = {
@@ -60,11 +59,43 @@ export default class ShopifyService extends TransactionBaseService {
       external_id: id,
       status: status === 'published' ? 'active' : 'draft',
       options: options as unknown as Option[],
-      vendor: "Burton"
+      vendor: "Burton",
+      images: images.map(image => image.url)
     }
 
     try {
-      return await this.shopify.product.create(shopifyProduct)
+      const product = await this.shopify.product.create(shopifyProduct)
+
+      if(product){
+        if(thumbnail){
+          await this.shopify.productImage.create(product.id, { src: thumbnail })
+        }
+      }
+      return product;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getProduct(id: number | string): Promise<Shopify.IProduct> {
+    try {
+      return await this.shopify.product.get(parseInt(id as string))
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getProductImages(id: string): Promise<Shopify.IProductImage[]> {
+    try {
+      const product = await this.getProduct(id)
+
+      if(product){
+        return product.images
+      }
+
+      return null
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
       console.log(error.response.body.errors)
@@ -153,6 +184,7 @@ export default class ShopifyService extends TransactionBaseService {
 
   async addFulfilmentAndTracking(external_order_id: number, tracking: TrackingLink) {
     try {
+
       const trackingPayload = {
         line_items_by_fulfillment_order: [{ fulfillment_order_id: external_order_id }],
         tracking_info: {
@@ -163,6 +195,7 @@ export default class ShopifyService extends TransactionBaseService {
       }
 
       const payload = {
+        order_id: external_order_id,
         fulfillment: {
           message: "",
           notify_customer: false,
@@ -183,12 +216,11 @@ export default class ShopifyService extends TransactionBaseService {
       console.log(JSON.stringify(payload))
 
       const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled' })
-      console.log("***************8")
-      console.log("***************8")
-      console.log("***************8")
-      console.log("***************8")
-      const fulfillemnt = await this.shopify.fulfillment.create(external_order_id, JSON.stringify(payload))
-      console.log(":::::::::::::::::::", fulfillemnt)
+      const order = await this.shopify.order.get(external_order_id, {
+        fields: 'id,line_items,name,total_price,fullfillments'
+      })
+
+      const fulfillemnt = await this.shopify.fulfillment.createV2(JSON.stringify(payload))
       return fulfillemnt;
 
     } catch (error) {

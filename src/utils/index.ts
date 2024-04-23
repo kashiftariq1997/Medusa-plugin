@@ -1,12 +1,19 @@
-import { Order, Region, Currency, OrderStatus, FulfillmentStatus, PaymentStatus, LineItem, Address, Discount, DiscountRuleType, ProductType, ProductStatus, Customer, Fulfillment, TrackingLink, } from "@medusajs/medusa";
-import { EntityManager } from "typeorm";
-import { ShopifyCustomer, ShopifyFulfillment, ShopifyOrder, ShopifyProduct } from "../types";
-import { CreateProductInput, UpdateProductInput } from "@medusajs/medusa/dist/types/product";
-import { CreateCustomerInput } from "@medusajs/medusa/dist/types/customers";
-import { UpdateOrderInput } from "@medusajs/medusa/dist/types/orders";
 import Shopify from "shopify-api-node";
+import { EntityManager } from "typeorm";
+import { UpdateOrderInput } from "@medusajs/medusa/dist/types/orders";
+import { CreateCustomerInput } from "@medusajs/medusa/dist/types/customers";
+import { ShopifyCustomer, ShopifyFulfillment, ShopifyOrder, ShopifyProduct } from "../types";
+import {
+  Order, Region, Currency, OrderStatus, FulfillmentStatus, PaymentStatus, LineItem, Address,
+  Discount, DiscountRuleType, ProductStatus, Customer, Fulfillment
+} from "@medusajs/medusa";
+import {
+  CreateProductInput, CreateProductProductOption, CreateProductProductVariantInput, UpdateProductInput
+} from "@medusajs/medusa/dist/types/product";
 
-export async function transformShopifyOrderToOrderData(shopifyOrder: ShopifyOrder, manager: EntityManager): Promise<Partial<Order>> {
+export async function transformShopifyOrderToOrderData(
+  shopifyOrder: ShopifyOrder, manager: EntityManager
+): Promise<Partial<Order>> {
   const RegionRepository = manager.getRepository(Region)
   const CurrencyRepository = manager.getRepository(Currency)
 
@@ -47,7 +54,7 @@ export async function transformShopifyOrderToUpdateOrder(shopifyOrder: ShopifyOr
     // fulfillment_status: mapFulfillmentStatus(shopifyOrder.fulfillment_status) as any,
     // payment_status: mapPaymentStatus(shopifyOrder.financial_status) as any,
     discounts: shopifyOrder.discount_applications?.map(mapDiscounts) ?? [],
-    email: shopifyOrder.email ?? "test@test.com",
+    email: shopifyOrder.email ?? "test@medusa.com",
     // items: [],
     ...(customer ? { customer_id: customer.id } : null)
     // billing_address: mapAddress(shopifyOrder.billing_address),
@@ -55,71 +62,42 @@ export async function transformShopifyOrderToUpdateOrder(shopifyOrder: ShopifyOr
   };
 }
 
-export async function transformShopifyProductToUpdateProduct(shopifyProduct: ShopifyProduct, manager: EntityManager): Promise<UpdateProductInput> {
-  const ProductTypeRepository = manager.getRepository(ProductType)
-
-  const {
-    body_html, created_at, handle, id, image, images, options, product_type, published_at, published_scope,
-    status, tags, template_suffix, title, updated_at, variants, vendor
-  } = shopifyProduct
-
-  // let productType: ProductType | null = null;
-
-  // productType = await ProductTypeRepository.findBy({ value: product_type })
-  return {
-    title: title || '',
-    subtitle: '',
-    description: body_html,
-    handle,
-    is_giftcard: false,
-    status: mapProductStatus(status),
-    images: [],
-    thumbnail: '',
-    // options: [],
-    // variants: variants as unknown as ProductVariant[],
-    // categories: [],
-    // profile_id: '',
-    weight: 10,
-    length: 10,
-    height: 10,
-    width: 10,
-    hs_code: '',
-    origin_country: '',
-    mid_code: '',
-    material: '',
-    // collection_id: '',
-    type: null,
-    // tags: [],
-    discountable: true,
-    external_id: id.toString(),
-    // metadata: {},
-    sales_channels: [],
-  };
+export function normalizeShopifyProductVariants(variants: Shopify.IProductVariant[]): CreateProductProductVariantInput[] {
+  return variants.map(variant => {
+    const { title, inventory_quantity, price } = variant || {}
+    return {
+      title,
+      inventory_quantity,
+      prices: [{ amount: parseInt(price) }]
+    }
+  })
 }
 
-export async function transformShopifyProductToProductData(shopifyProduct: Shopify.IProduct, manager: EntityManager): Promise<CreateProductInput> {
-  const ProductTypeRepository = manager.getRepository(ProductType)
+export function normalizeShopifyProductOptions(options: Shopify.IProductOption[]): CreateProductProductOption[] {
+  return options.map(option => {
+    const { name } = option || {}
+    return {
+      title: name
+    }
+  })
+}
 
+export async function transformShopifyProductToProductData(shopifyProduct: Shopify.IProduct): Promise<CreateProductInput> {
   const {
-    body_html, created_at, handle, id, image, images, options, product_type, published_at, published_scope,
-    status, tags, template_suffix, title, updated_at, variants, vendor
+    body_html, handle, id, image, images, options, status, title,
   } = shopifyProduct
 
-  // let productType: ProductType | null = null;
-
-  // productType = await ProductTypeRepository.findBy({ value: product_type })
   return {
     title: title || '',
     subtitle: '',
     description: body_html,
     handle,
-
     is_giftcard: false,
     status: mapProductStatus(status),
-    images: [],
-    thumbnail: '',
-    // options: [],
-    // variants: variants as unknown as ProductVariant[],
+    images: images.map(image => image.src || ''),
+    thumbnail: image.src || '',
+    options: normalizeShopifyProductOptions(options),
+    // variants: normalizeShopifyProductVariants(variants),
     // categories: [],
     // profile_id: '',
     weight: 10,
@@ -304,9 +282,9 @@ export async function getOrderFulfillmentData(
   return save ? save : null;
 }
 
-export function parseLineItems(items: LineItem[], order_external_id: number){
+export function parseLineItems(items: LineItem[], order_external_id: number) {
   return items.map(item => {
-    const { 
+    const {
       fulfilled_quantity, description, has_shipping, includes_tax, unit_price,
       is_return, is_giftcard, quantity, title
     } = item || {}
