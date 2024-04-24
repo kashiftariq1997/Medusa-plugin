@@ -2,10 +2,8 @@ import {
   OrderService,
   type SubscriberConfig,
   type SubscriberArgs,
-  FulfillmentService,
   TrackingLink,
 } from "@medusajs/medusa"
-import { UpdateOrderInput } from "@medusajs/medusa/dist/types/orders"
 import ShopifyService from "../services/shopify"
 import { EntityManager } from "typeorm"
 
@@ -16,25 +14,25 @@ export default async function shipmentCreatedHandler({
   const TrackingLinkRepository = manager.getRepository(TrackingLink)
 
   const orderService: OrderService = container.resolve("orderService")
-  const fulfillmentService: FulfillmentService = container.resolve("fulfillmentService")
   const shopifyService: ShopifyService = container.resolve("shopifyService")
-  const { id, fulfillment_id } = data
+  const { id } = data
+
   try {
     const order = await orderService.retrieve(id, { relations: ['fulfillments'] })
     const tracking = await TrackingLinkRepository.find({ where: { fulfillment_id: order.fulfillments[0].id } })
 
     if (order && tracking && tracking.length > 0) {
-      const shopifyOrder = await shopifyService.addFulfilmentAndTracking(order.external_id as unknown as number, tracking[0])
-
+      const shopifyOrder = await shopifyService.getOrder(order.external_id)
+      const shopifyFulfillments = await shopifyService.getFulfillments(order.external_id)
       if (shopifyOrder) {
-        const { id: external_Id } = shopifyOrder
-        await orderService.update(id, { external_id: external_Id.toString() } as UpdateOrderInput)
-        console.log("*** Order fulfillment synced with shopify store ***")
+        await shopifyService.updateOrderTracking(shopifyFulfillments[0].id, tracking[0].tracking_number)
+
+        console.log("*** Order tracking synced with shopify store ***")
       }
     }
 
   } catch (error) {
-    console.log("********** Error in orderCreatedFulfillmentHandler ********")
+    console.log("********** Error in shipmentCreatedHandler ********")
     console.log(error)
   }
 }
