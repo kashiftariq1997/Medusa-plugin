@@ -1,7 +1,8 @@
 import { MedusaRequest, MedusaResponse, Product, ProductService } from "@medusajs/medusa";
+import Shopify from "shopify-api-node";
 import { EntityManager } from "typeorm";
-import { ShopifyProduct } from "../../../types";
-import { transformShopifyProductToUpdateProduct } from "../../../utils";
+import { transformShopifyProductToProductData } from "../../../utils";
+import { UpdateProductInput } from "@medusajs/medusa/dist/types/product";
 
 export async function POST(
   req: MedusaRequest,
@@ -13,17 +14,16 @@ export async function POST(
     const manager: EntityManager = req.scope.resolve("manager")
     const ProductRepository = manager.getRepository(Product)
     const productService = req.scope.resolve<ProductService>("productService");
-    const shopifyProduct: ShopifyProduct = req.body
+    const shopifyProduct: Shopify.IProduct = req.body
 
-    if(shopifyProduct.id){
+    if (shopifyProduct.id) {
       const existingProduct = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });
 
       if (existingProduct) {
-        const transformedProduct = await transformShopifyProductToUpdateProduct(shopifyProduct, manager);
-        console.log("******* ", existingProduct)
-        const updatedProduct = await productService.update(existingProduct.id, transformedProduct);
+        const transformedProduct = await transformShopifyProductToProductData(shopifyProduct);
+        const updatedProduct = await productService.update(existingProduct.id, transformedProduct as UpdateProductInput);
 
-        if(updatedProduct){
+        if (updatedProduct) {
           res.status(200).json({ product: updatedProduct });
           return
         } else {
@@ -39,6 +39,6 @@ export async function POST(
   } catch (error) {
     console.log("************ Error in Single Product Add Sync ***********")
     console.log(error)
-    res.status(500).json({ product: null});
+    res.status(500).json({ product: null });
   }
 }

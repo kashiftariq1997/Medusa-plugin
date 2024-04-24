@@ -5,7 +5,7 @@ import {
 } from "@medusajs/medusa"
 import ShopifyService from "../services/shopify"
 
-export default async function orderCloseHandler({
+export default async function orderCapturedPaymentHandler({
   data, eventName, container, pluginOptions,
 }: SubscriberArgs<Record<string, any>>) {
   const orderService: OrderService = container.resolve("orderService")
@@ -16,12 +16,12 @@ export default async function orderCloseHandler({
     const order = await orderService.retrieve(id)
 
     if (order) {
-      await shopifyService.closeOrder(order.external_id)
-      console.log("*** Completed Order synced with shopify store ***")
+      await shopifyService.capturedOrderPayment(order)
+      console.log("*** Order payment synced with shopify store ***")
     }
 
   } catch (error) {
-    console.log("********** Error in orderCloseHandler ********")
+    console.log("********** Error in orderCapturedPaymentHandler ********")
     console.log(error)
   }
 }
@@ -29,6 +29,6 @@ export default async function orderCloseHandler({
 export const config: SubscriberConfig = {
   event: OrderService.Events.COMPLETED,
   context: {
-    subscriberId: "order-closed-handler",
+    subscriberId: "order-captured-payment-handler",
   },
 }

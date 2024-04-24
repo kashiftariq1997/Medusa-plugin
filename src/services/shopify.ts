@@ -1,5 +1,5 @@
-import { Fulfillment, Order, Product, TransactionBaseService, LineItem, TrackingLink } from '@medusajs/medusa';
 import Shopify from 'shopify-api-node'
+import { Order, Product, TransactionBaseService, LineItem, TrackingLink } from '@medusajs/medusa';
 import { Option, ShopifyProduct } from '../types';
 import { parseLineItems } from '../utils';
 
@@ -10,7 +10,7 @@ export default class ShopifyService extends TransactionBaseService {
     super(container);
 
     this.shopify = new Shopify({
-      shopName: '383c42-2',
+      shopName: process.env.SHOPIFY_SHOP_NAME,
       apiKey: process.env.SHOPIFY_API_KEY,
       password: process.env.SHOPIFY_PASSWORD
     })
@@ -49,8 +49,7 @@ export default class ShopifyService extends TransactionBaseService {
 
   async createProduct(medusaProduct: Product): Promise<Shopify.IProduct> {
     const {
-      id, collection_id, handle, created_at, options, origin_country, status,
-      title, type, description,
+      id, handle, options, status, title, description, images, thumbnail
     } = medusaProduct || {}
 
     const shopifyProduct = {
@@ -60,11 +59,44 @@ export default class ShopifyService extends TransactionBaseService {
       external_id: id,
       status: status === 'published' ? 'active' : 'draft',
       options: options as unknown as Option[],
-      vendor: "Burton"
+      vendor: "Burton",
+      images: images.map(image => image.url)
     }
 
     try {
-      return await this.shopify.product.create(shopifyProduct)
+      const product = await this.shopify.product.create(shopifyProduct)
+
+      if (product) {
+        if (thumbnail) {
+          await this.shopify.productImage.create(product.id, { src: thumbnail })
+        }
+      }
+
+      return product;
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getProduct(id: number | string): Promise<Shopify.IProduct> {
+    try {
+      return await this.shopify.product.get(parseInt(id as string))
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getProductImages(id: string): Promise<Shopify.IProductImage[]> {
+    try {
+      const product = await this.getProduct(id)
+
+      if (product) {
+        return product.images
+      }
+
+      return null
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in addProduct >>>>>>>>>>>>")
       console.log(error.response.body.errors)
@@ -86,8 +118,7 @@ export default class ShopifyService extends TransactionBaseService {
     }
 
     try {
-      const productResponse = await this.shopify.product.update(parseInt(external_id), shopifyProduct)
-      return productResponse;
+      return await this.shopify.product.update(parseInt(external_id), shopifyProduct)
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in updateProduct >>>>>>>>>>>>")
       console.log(error.response.body.errors)
@@ -97,9 +128,26 @@ export default class ShopifyService extends TransactionBaseService {
   async deleteProduct(id: number) {
     try {
       await this.shopify.product.delete(id);
-      console.log("*** Deleted Product synced with store ****")
     } catch (error) {
-      console.log("<<<<<<<<<<<<<< Error in deleteProduct >>>>>>>>>>>>")
+      console.log("<<<<<<<<<<<<<< Error in getProduct >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getOrder(id: number | string) {
+    try {
+      return await this.shopify.order.get(parseInt(id as string));
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in getOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async getFulfillments(id: number | string) {
+    try {
+      return await this.shopify.fulfillment.list(parseInt(id as string));
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in getFulfillments >>>>>>>>>>>>")
       console.log(error.response.body.errors)
     }
   }
@@ -114,6 +162,53 @@ export default class ShopifyService extends TransactionBaseService {
     }
   }
 
+  async closeOrder(id: number | string): Promise<Shopify.IOrder> {
+    try {
+      return await this.shopify.order.close(parseInt(id as string))
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in closeOrder >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async capturedOrderPayment(order: Order): Promise<Shopify.ITransaction> {
+    try {
+      const { external_id, currency_code, payments } = order || {}
+      const { amount: orderAmmunt } = payments[0] || {};
+
+      const tracsactionPayload = {
+        order_id: parseInt(external_id),
+        amount: orderAmmunt,
+        currency: currency_code
+      }
+
+      return await this.shopify.transaction.create(parseInt(external_id), tracsactionPayload)
+
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in capturedOrderPayment >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
+  async updateOrderTracking(fulfillmentId: number | string, trackingNumber: string): Promise<Shopify.IFulfillment> {
+    try {
+      const trackingPayload = {
+          message: "The package was shipped.",
+          notify_customer: false,
+          tracking_info: {
+            number: trackingNumber,
+            url: `"https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`,
+            company: "UPS",
+          }
+      }
+
+      return await this.shopify.fulfillment.updateTracking(parseInt(fulfillmentId as string), trackingPayload)
+    } catch (error) {
+      console.log("<<<<<<<<<<<<<< Error in updateOrderTracking >>>>>>>>>>>>")
+      console.log(error.response.body.errors)
+    }
+  }
+
   async placeOrder(medusaOrder: Order, lineItems: LineItem[]): Promise<Shopify.IOrder> {
     const { tax_total, currency } = medusaOrder || {}
     const shopifyOrder = {
@@ -123,10 +218,7 @@ export default class ShopifyService extends TransactionBaseService {
     }
 
     try {
-      const response = await this.shopify.order.create(shopifyOrder);
-
-      console.log("Place order response", response)
-      return response;
+      return await this.shopify.order.create(shopifyOrder);
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in placeOrder >>>>>>>>>>>>")
       console.log(error.response.body.errors)
@@ -142,9 +234,7 @@ export default class ShopifyService extends TransactionBaseService {
     }
 
     try {
-      const orderResponse = await this.shopify.order.update(parseInt(external_id), shopifyOrder)
-      console.log("R E S P O S E ", orderResponse)
-      return orderResponse;
+      return await this.shopify.order.update(parseInt(external_id), shopifyOrder)
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in updateOrder >>>>>>>>>>>>")
       console.log(error.response.body.errors)
@@ -153,16 +243,8 @@ export default class ShopifyService extends TransactionBaseService {
 
   async addFulfilmentAndTracking(external_order_id: number, tracking: TrackingLink) {
     try {
-      const trackingPayload = {
-        line_items_by_fulfillment_order: [{ fulfillment_order_id: external_order_id }],
-        tracking_info: {
-          number: tracking.tracking_number,
-          url: tracking.url || '',
-          tracking_number: tracking.tracking_number
-        }
-      }
-
       const payload = {
+        order_id: external_order_id,
         fulfillment: {
           message: "",
           notify_customer: false,
@@ -179,18 +261,13 @@ export default class ShopifyService extends TransactionBaseService {
           ],
         }
       }
-      console.log("1111111111", payload)
-      console.log(JSON.stringify(payload))
 
-      const updateOrder = await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled' })
-      console.log("***************8")
-      console.log("***************8")
-      console.log("***************8")
-      console.log("***************8")
-      const fulfillemnt = await this.shopify.fulfillment.create(external_order_id, JSON.stringify(payload))
-      console.log(":::::::::::::::::::", fulfillemnt)
-      return fulfillemnt;
+      await this.shopify.order.update(external_order_id, { fulfillment_status: 'fulfilled' })
+      await this.shopify.order.get(external_order_id, {
+        fields: 'id,line_items,name,total_price,fullfillments'
+      })
 
+      return await this.shopify.fulfillment.createV2(JSON.stringify(payload))
     } catch (error) {
       console.log("<<<<<<<<<<<<<< Error in addFulfilmentAndTracking >>>>>>>>>>>>")
       console.log(error.response.body.errors)

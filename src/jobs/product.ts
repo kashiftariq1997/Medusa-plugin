@@ -4,21 +4,13 @@ import {
   type ScheduledJobArgs,
   Product,
 }  from "@medusajs/medusa"
+import Shopify from "shopify-api-node"
 import ShopifyService from "../services/shopify"
 import { EntityManager } from "typeorm"
 
-import {
-  mapAddress, mapCustomer, mapDiscounts, mapFulfillmentStatus, mapLineItems,
-  mapOrderStatus, mapPaymentStatus, transformShopifyOrderToOrderData, transformShopifyProductToProductData
-} from "../utils"
-import { ShopifyProduct } from "../types"
-import Shopify from "shopify-api-node"
+import { transformShopifyProductToProductData } from "../utils"
 
-export default async function handler({
-  container,
-  data,
-  pluginOptions,
-}: ScheduledJobArgs) {
+export default async function handler({ container }: ScheduledJobArgs) {
   try {
     const manager: EntityManager = container.resolve("manager")
     const ProductRepository = manager.getRepository(Product)
@@ -34,7 +26,7 @@ export default async function handler({
             const existingProduct = await ProductRepository.findOne({ where: { external_id: shopifyProduct.id.toString() } });
 
             if (!existingProduct) {
-              const transformedProduct = await transformShopifyProductToProductData(shopifyProduct, manager);
+              const transformedProduct = await transformShopifyProductToProductData(shopifyProduct);
               try {
                 // typeOrm mutation to feed data into database
                 const newProduct = await productService.create(transformedProduct);
