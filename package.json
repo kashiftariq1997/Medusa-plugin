@@ -33,7 +33,7 @@
     "@medusajs/file-local": "^1.0.3",
     "@medusajs/medusa": "1.20.2",
     "@medusajs/ui-preset": "^1.1.2",
-    "@shopify/shopify-api": "^9.5.1",
+    "@shopify/shopify-api": "^10.0.0",
     "@tanstack/react-query": "5.28.9",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
@@ -63,7 +63,7 @@
   },
   "peerDependencies": {
     "@medusajs/medusa": "1.20.2",
-    "@shopify/shopify-api": "^9.5.1",
+    "@shopify/shopify-api": "^10.0.0",
     "react": "^18.2.0",
     "react-router-dom": "^6.13.0"
   },
