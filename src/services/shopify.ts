@@ -60,7 +60,7 @@ export default class ShopifyService extends TransactionBaseService {
       status: status === 'published' ? 'active' : 'draft',
       options: options as unknown as Option[],
       vendor: "Burton",
-      images: images.map(image => image.url)
+      images: images.length ? images.map(image => image.url ?? '') : []
     }
 
     try {
