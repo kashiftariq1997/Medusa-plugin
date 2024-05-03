@@ -26,12 +26,12 @@
     "dev": "cross-env npm run build:server && medusa develop"
   },
   "dependencies": {
-    "@medusajs/admin": "7.1.11",
+    "@medusajs/admin": "7.1.14",
     "@medusajs/cache-redis": "^1.8.9",
     "@medusajs/event-bus-local": "^1.9.8",
     "@medusajs/event-bus-redis": "^1.8.11",
     "@medusajs/file-local": "^1.0.3",
-    "@medusajs/medusa": "1.20.2",
+    "@medusajs/medusa": "1.20.6",
     "@medusajs/ui-preset": "^1.1.2",
     "@shopify/shopify-api": "^9.5.1",
     "@tanstack/react-query": "5.28.9",
@@ -62,7 +62,7 @@
     "typescript": "^4.5.2"
   },
   "peerDependencies": {
-    "@medusajs/medusa": "1.20.2",
+    "@medusajs/medusa": "1.20.6",
     "@shopify/shopify-api": "^9.5.1",
     "react": "^18.2.0",
     "react-router-dom": "^6.13.0"
